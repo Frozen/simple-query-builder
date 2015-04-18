@@ -1,4 +1,8 @@
+import re
 
+# RE_BIND_PATTERN = ":([a-zA-Z0-9]+)"
+RE_BIND_PATTERN = "%\(([a-zA-Z0-9]+)\)s"
+RE_BIND_PATTERN_COMPILED = re.compile(RE_BIND_PATTERN)
 
 class Compilable:
     pass
@@ -15,9 +19,19 @@ class Query(Compilable):
     order_by = None
     having = None
     limit = None
+    offset = None
+
+    _bind = None
 
     def __init__(self):
-        self.bind = []
+        self._bind = dict()
+
+    def bind(self):
+        self.compile()
+        return self._bind
+
+    def add_bind(self, key, value):
+        self._bind[key] = value
 
     def _compile_select(self, select):
         query = None
@@ -68,19 +82,24 @@ class Query(Compilable):
         if columns:
             return u', '.join(columns)
 
-    def _compile_where(self, param):
+    def _compile_where(self, params):
         columns = []
 
-        if param is None:
+        if params is None:
             return None
 
-        if not self.is_collection(param):
-            param = [param]
+        if not self.is_collection(params):
+            params = [params]
 
-        for column in param:
-            if not isinstance(column, Compilable):
-                column = Where(column)
-            columns.append(u"{0}".format(column.compile(self)))
+        for column in params:
+
+            if isinstance(column, Compilable):
+                column = column.compile(self)
+            else:
+                column = Where(column).compile(self)
+            if column is None:
+                continue
+            columns.append(u"{0}".format(column))
 
         if columns:
             return u"WHERE {0}".format(u" AND ".join(columns))
@@ -146,8 +165,6 @@ class Query(Compilable):
             param = [param]
 
         for column in param:
-            if isinstance(column, Compilable):
-                column = column.compile(self)
             columns.append(u"{0}".format(column))
 
         if columns:
@@ -197,8 +214,8 @@ class Where(Compilable):
             statement = statement.compilable()
 
         if len(self.params) == 2:
-            print("bind", statement)
-            parent.bind.append(self.param)
+            key = _fetch_key(self.statement)
+            parent.add_bind(key, self.param)
         return u"({0})".format(statement)
 
 
@@ -227,21 +244,42 @@ class WhereIn(Compilable):
         self.values = values
 
     def compile(self, parent):
+
+        if isinstance(self.values, Compilable):
+            return self._compile_subquery(parent)
+        else:
+            return self._compile_values(parent)
+
+    def _compile_subquery(self, parent):
+        compilable = self.values
+
+        statement = self.statement
+        try:
+            key = _fetch_key(statement)
+            statement = RE_BIND_PATTERN_COMPILED.sub("{0}", statement)
+            return "(" + statement.format(compilable.compile(parent)) + ")"
+        except ValueError:
+            return "(" + statement + " IN (" + compilable.compile(parent) + ")" + ")"
+
+    def _compile_values(self, parent):
         statement = self.statement
         if isinstance(statement, Compilable):
             statement = statement.compile(parent)
         values = self.values
-        if isinstance(self.values, Compilable):
-            values = values.compile(parent)
 
-        if self.values:
-            if is_collection(self.values):
-                ret = Where(u"{0} IN (%s)".format(self.statement), u', '.join(map(unicode, self.values))).compile(parent)
-                return ret
-            # print(statement, values)
-            return Where(u"{0} IN ({1})".format(statement, values)).compile(parent)
-        else:
+        if not self.values:
             return None
+
+        key = _fetch_key(statement)
+        statement = RE_BIND_PATTERN_COMPILED.sub("{0}", statement)
+        if is_collection(values):
+            statement = statement.format(', '.join(map(lambda x: "%({0}_{1})s".format(key, x), range(len(values)))))
+            for x in range(len(values)):
+                parent.add_bind("{0}_{1}".format(key, x), values[x])
+            # for (k, value) in enumerate(self.values, start=1):
+            #     ret = Where(self.statement, u', '.join(map(unicode, self.values))).compile(parent)
+            return "("+statement+")"
+        return Where(u"{0} IN ({1})".format(statement, values)).compile(parent)
 
 
 class Join(Compilable):
@@ -297,4 +335,14 @@ def is_collection(v):
     except TypeError:
         return False
 
+
+def _fetch_key(statement):
+    """
+
+    :rtype : str
+    """
+    try:
+        return RE_BIND_PATTERN_COMPILED.search(statement).group(1)
+    except AttributeError as e:
+        raise ValueError("statement does not contains bind name")
 

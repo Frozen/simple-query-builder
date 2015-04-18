@@ -9,6 +9,8 @@ class TestMysqlQuery(unittest.TestCase):
     class LocalQuery(Query):
         select = None
 
+
+
     def test_select(self):
 
         q = Query()
@@ -55,7 +57,7 @@ class TestMysqlQuery(unittest.TestCase):
         q2 = self.LocalQuery()
         q2.select = 1
         q.join = LeftJoin(Subquery(q2, "foo"), "foo.id=posts.user_id")
-        self.assertEqual("LEFT JOIN (SELECT 1) as foo ON foo.id=posts.user_id", q.compile())
+        self.assertEqual("LEFT JOIN (SELECT 1) AS foo ON foo.id=posts.user_id", q.compile())
 
     def test_where(self):
 
@@ -64,24 +66,36 @@ class TestMysqlQuery(unittest.TestCase):
         self.assertEqual("WHERE (user.id > 1)", q.compile())
 
         q = self.LocalQuery()
-        q.where = Where("user.id > %s", 1)
-        self.assertEqual("WHERE (user.id > %s)", q.compile())
-        self.assertEqual([1], q.bind)
+        q.where = Where("user.id > %(id)s", 1)
+        self.assertEqual("WHERE (user.id > %(id)s)", q.compile())
+        self.assertEqual({"id": 1}, q.bind())
 
         q = self.LocalQuery()
-        q2 = self.LocalQuery()
-        q2.select = "id"
-        q2.from_ = "users"
-        q2.where = "user.id > 1"
-        q.where = WhereIn("user.id", [1, 3, 5])
-        self.assertEqual("WHERE (user.id IN (%s))", q.compile())
-        q.where = WhereIn("user.id", q2)
-        self.assertEqual("WHERE (user.id IN (SELECT id FROM users WHERE (user.id > 1)))", q.compile())
+        q.where = [Where("user.id = %(id1)s", 1), WhereOr(Where("post.id = 1"), Where("post.id = %(id2)s", 2), "post.id = 3", WhereIn("post.id IN (%(values)s)", [3, 5, 7]))]
+        self.assertEqual({
+            'id1': 1,
+            'id2': 2,
+            'values_0': 3,
+            'values_1': 5,
+            'values_2': 7
+        }, q.bind())
+        self.assertEqual("WHERE (user.id = %(id1)s) AND ((post.id = 1) OR (post.id = %(id2)s) OR (post.id = 3) OR "
+                         "(post.id IN (%(values_0)s, %(values_1)s, %(values_2)s)))", q.compile())
+
+    def test_where_in(self):
 
         q = self.LocalQuery()
-        q.where = [Where("user.id = %s", 1), WhereOr(Where("post.id = 1"), Where("post.id = %s", 2), "post.id = 3", WhereIn("post.id", [3, 5, 7]))]
-        self.assertEqual("WHERE (user.id = %s) AND ((post.id = 1) OR (post.id = %s) OR (post.id = 3) OR (post.id IN (%s)))", q.compile())
-        self.assertEqual([1, 2, u'3, 5, 7'], q.bind)
+        q.where = WhereIn("user.id IN (%(ids)s)", [1, 3])
+        self.assertEqual("WHERE (user.id IN (%(ids_0)s, %(ids_1)s))", q.compile())
+
+        # test empty
+        q = self.LocalQuery()
+        q.where = WhereIn("user.id", [])
+        self.assertEqual("", q.compile())
+
+        q = self.LocalQuery()
+        q.where = WhereIn("user.id IN (%(in)s)", Query())
+        self.assertEqual("WHERE (user.id IN (SELECT *))", q.compile())
 
     def test_group_by(self):
 
@@ -122,7 +136,6 @@ class TestMysqlQuery(unittest.TestCase):
         q.limit = [10, 20]
         self.assertEqual("LIMIT 10, 20", q.compile())
 
-    # def test_
 
 class TestMysqlHard(unittest.TestCase):
 
