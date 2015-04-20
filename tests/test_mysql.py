@@ -1,5 +1,6 @@
 # coding=utf-8
 import unittest
+import datetime
 from simple_query_builder.mysql import Query, LeftJoin, RightJoin, InnerJoin, CrossJoin, Subquery, Where, WhereOr, WhereIn, \
     Join
 
@@ -153,7 +154,7 @@ class TestMysqlHard(unittest.TestCase):
 
     def test_1(self):
 
-        query =u"SELECT id, (SELECT name FROM clip WHERE (id = c2.id)) " \
+        query =u"SELECT id, (SELECT name FROM clip WHERE (id = c2.id) AND (datein >= %(dt)s)) " \
                 "FROM clip c1 " \
                 "JOIN (SELECT id FROM clip WHERE (id < 30)) AS c2 ON c1.id = c2.id " \
                 "WHERE (c1.id IN (%(c1_id_0)s))" \
@@ -163,7 +164,7 @@ class TestMysqlHard(unittest.TestCase):
         q3 = Query()
 
         q1.select = ['name']
-        q1.where = Where("id = c2.id")
+        q1.where = [Where("id = c2.id"), Where("datein >= %(dt)s", datetime.date(2015, 4, 1))]
         q1.from_ = "clip"
 
         q2.select = 'id'
@@ -176,5 +177,6 @@ class TestMysqlHard(unittest.TestCase):
         q3.where = WhereIn('c1.id IN (%(c1_id)s)', [1])
 
         self.assertEqual(query, q3.compile())
+        self.assertEqual({'dt': '2015-04-01', 'c1_id_0': 1}, q3.bind())
 
 

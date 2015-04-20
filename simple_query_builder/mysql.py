@@ -1,23 +1,19 @@
 import re
-from six import string_types
-from simple_query_builder import stringify_if_date
+
+from simple_query_builder import stringify_if_date, Compilable, BaseQuery
+
 
 RE_BIND_PATTERN = "%\(([a-zA-Z0-9_]+)\)s"
 RE_BIND_PATTERN_COMPILED = re.compile(RE_BIND_PATTERN)
 
 
-class Compilable:
-    pass
-
-
-class Query(Compilable):
+class Query(BaseQuery):
 
     select = '*'
     from_ = None
     where = None
     join = None
     on = []
-    bind = None
     group_by = None
     order_by = None
     having = None
@@ -26,66 +22,7 @@ class Query(Compilable):
 
     _bind = None
 
-    def __init__(self):
-        self._bind = dict()
-
-    def bind(self):
-        self.compile()
-        return self._bind
-
-    def add_bind(self, key, value):
-        self._bind[key] = value
-
-    def _compile_select(self, select):
-        query = None
-        if select is not None:
-            columns = []
-
-            if self.is_collection(select):
-                for column in select:
-                    if isinstance(column, Compilable):
-                        column = u"({0})".format(column.compile(self))
-                    columns.append(unicode(column))
-                query = u"SELECT " + ", ".join(columns)
-            else:
-                query = u"SELECT " + unicode(select)
-        return query
-
-    def _compile_from(self, param):
-        query = None
-        if param is not None:
-            columns = []
-
-            if self.is_collection(param):
-                for column in param:
-                    columns.append(unicode(column))
-                query = "FROM " + ", ".join(columns)
-            else:
-                query = "FROM " + unicode(param)
-        return query
-
-    def _compile_join(self, param):
-        columns = []
-        if param is not None:
-            columns = []
-
-            if self.is_collection(param):
-                for column in param:
-                    if isinstance(column, Compilable):
-                        column = column.compile()
-                        columns.append(column)
-                    else:
-                        columns.append(u"JOIN " + column)
-            else:
-                if isinstance(param, Compilable):
-                    columns.append(param.compile())
-                else:
-                    columns.append(u"JOIN " + param)
-
-        if columns:
-            return u', '.join(columns)
-
-    def _compile_where(self, params):
+    def _compile_where(self, parent, params):
         columns = []
 
         if params is None:
@@ -97,9 +34,9 @@ class Query(Compilable):
         for column in params:
 
             if isinstance(column, Compilable):
-                column = column.compile(self)
+                column = column.compile(parent)
             else:
-                column = Where(column).compile(self)
+                column = Where(column).compile(parent)
             if column is None:
                 continue
             columns.append(u"{0}".format(column))
@@ -107,56 +44,6 @@ class Query(Compilable):
         if columns:
             return u"WHERE {0}".format(u" AND ".join(columns))
 
-    def _compile_group_by(self, param):
-        columns = []
-
-        if param is None:
-            return None
-
-        if not self.is_collection(param):
-            param = [param]
-
-        for column in param:
-            if isinstance(column, Compilable):
-                column = column.compile()
-            columns.append(u"{0}".format(column))
-
-        if columns:
-            return u"GROUP BY {0}".format(u", ".join(columns))
-
-    def _compile_having(self, param):
-        columns = []
-
-        if param is None:
-            return None
-
-        if not self.is_collection(param):
-            param = [param]
-
-        for column in param:
-            if isinstance(column, Compilable):
-                column = column.compile(self)
-            columns.append(u"{0}".format(column))
-
-        if columns:
-            return u"HAVING {0}".format(u" AND ".join(columns))
-
-    def _compile_order_by(self, param):
-        columns = []
-
-        if param is None:
-            return None
-
-        if not self.is_collection(param):
-            param = [param]
-
-        for column in param:
-            if isinstance(column, Compilable):
-                column = column.compile(self)
-            columns.append(u"{0}".format(column))
-
-        if columns:
-            return u"ORDER BY {0}".format(u", ".join(columns))
 
     def _compile_limit(self, limit, offset):
         columns = []
@@ -169,30 +56,23 @@ class Query(Compilable):
 
         return u"LIMIT {0}".format(limit)
 
-
     def compile(self, parent=None):
+        if parent is None:
+            parent = self
         query = [
-            self._compile_select(self.select),
+            self._compile_select(parent, self.select),
             self._compile_from(self.from_),
-            self._compile_join(self.join),
-            self._compile_where(self.where),
+            self._compile_join(parent, self.join),
+            self._compile_where(parent, self.where),
             self._compile_group_by(self.group_by),
             self._compile_having(self.having),
             self._compile_order_by(self.order_by),
             self._compile_limit(self.limit, self.offset)
-
         ]
 
         return ' '.join(filter(lambda x: x, query))
 
-    def is_collection(self, v):
-        if isinstance(v, string_types):
-            return False
-        try:
-            iter(v)
-            return True
-        except TypeError:
-            return False
+
 
 
 class Where(Compilable):
@@ -289,10 +169,10 @@ class Join(Compilable):
         self.join = join
         self.on = on
 
-    def compile(self):
+    def compile(self, parent=None):
         join = self.join
         if isinstance(self.join, Compilable):
-            join = self.join.compile()
+            join = self.join.compile(parent=None)
         return u"{0}JOIN {1} ON {2}".format(self.word, join, self.on)
 
 
@@ -319,10 +199,10 @@ class Subquery(Compilable):
         self.query = query
         self.name = as_name
 
-    def compile(self):
+    def compile(self, parent=None):
         query = self.query
         if isinstance(query, Compilable):
-            query = query.compile()
+            query = query.compile(parent)
         return u"({0}) AS {1}".format(query, self.name)
 
 
