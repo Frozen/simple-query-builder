@@ -40,7 +40,6 @@ class Query(BaseQuery):
 
         return u"LIMIT {0}".format(limit)
 
-
     def compile(self, parent=None):
         if parent is None:
             parent = self
@@ -136,9 +135,10 @@ class WhereIn(Compilable):
         key = _fetch_key(statement)
         statement = RE_BIND_PATTERN_COMPILED.sub("{0}", statement)
         if is_collection(values):
-            statement = statement.format(', '.join(map(lambda x: ":{0}_{1}".format(key, x), range(len(values)))))
-            for x in range(len(values)):
-                parent.add_bind("{0}_{1}".format(key, x), values[x])
+            from psycopg2.extensions import adapt
+            statement = statement.format(', '.join(map(lambda x: adapt(x).getquoted(), values)))
+            # for x in range(len(values)):
+            #     parent.add_bind("{0}_{1}".format(key, x), values[x])
             # for (k, value) in enumerate(self.values, start=1):
             #     ret = Where(self.statement, u', '.join(map(unicode, self.values))).compile(parent)
             return "("+statement+")"

@@ -77,13 +77,10 @@ class TestMysqlQuery(unittest.TestCase):
                            WhereIn("post.id IN (:values)", [3, 5, 7]))]
         self.assertEqual({
             'id1': 1,
-            'id2': 2,
-            'values_0': 3,
-            'values_1': 5,
-            'values_2': 7
+            'id2': 2
         }, q.bind())
         self.assertEqual("WHERE (user.id = :id1) AND ((post.id = 1) OR (post.id = :id2) OR (post.id = 3) OR "
-                         "(post.id IN (:values_0, :values_1, :values_2)))", q.compile())
+                         "(post.id IN (3, 5, 7)))", q.compile())
 
         # test where with date and datetime
         from datetime import datetime, date
