@@ -133,8 +133,9 @@ class TestMysqlQuery(unittest.TestCase):
         self.assertEqual("LIMIT 10", q.compile())
 
         q = self.LocalQuery()
-        q.limit = [10, 20]
-        self.assertEqual("LIMIT 10, 20", q.compile())
+        q.limit = 10
+        q.offset = 20
+        self.assertEqual("LIMIT 20, 10", q.compile())
 
 
 class TestMysqlHard(unittest.TestCase):
@@ -144,7 +145,7 @@ class TestMysqlHard(unittest.TestCase):
         query =u"SELECT id, (SELECT name FROM clip WHERE (id = c2.id)) " \
                 "FROM clip c1 " \
                 "JOIN (SELECT id FROM clip WHERE (id < 30)) AS c2 ON c1.id = c2.id " \
-                "WHERE (c1.id IN (%s))" \
+                "WHERE (c1.id IN (%(c1_id_0)s))" \
 
         q1 = Query()
         q2 = Query()
@@ -161,7 +162,7 @@ class TestMysqlHard(unittest.TestCase):
         q3.select = ['id', q1]
         q3.from_ = 'clip c1'
         q3.join = Join(Subquery(q2, 'c2'), 'c1.id = c2.id')
-        q3.where = WhereIn('c1.id', [1, 2, 3])
+        q3.where = WhereIn('c1.id IN (%(c1_id)s)', [1])
 
         self.assertEqual(query, q3.compile())
 

@@ -1,7 +1,7 @@
 import re
 from six import string_types
 # RE_BIND_PATTERN = ":([a-zA-Z0-9]+)"
-RE_BIND_PATTERN = "%\(([a-zA-Z0-9_]+)\)s"
+RE_BIND_PATTERN = ":([a-zA-Z0-9_]+)"
 RE_BIND_PATTERN_COMPILED = re.compile(RE_BIND_PATTERN)
 
 class Compilable:
@@ -162,7 +162,7 @@ class Query(Compilable):
             return None
 
         if offset is not None:
-            return u"LIMIT {0}, {1}".format(offset, limit)
+            return u"LIMIT {0} OFFSET {1}".format(limit, offset)
 
         return u"LIMIT {0}".format(limit)
 
