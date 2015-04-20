@@ -149,6 +149,17 @@ class TestMysqlQuery(unittest.TestCase):
         q.offset = 20
         self.assertEqual("LIMIT 20, 10", q.compile())
 
+    def test_add_where(self):
+
+        q = self.LocalQuery()
+        q.add_where(Where("id>1"))
+        self.assertEqual("WHERE (id>1)", q.compile())
+
+        q = self.LocalQuery()
+        q.where = Where("id > 1")
+        q.add_where(Where("id > 2"))
+        self.assertEqual("WHERE (id > 1) AND (id > 2)", q.compile())
+
 
 class TestMysqlHard(unittest.TestCase):
 

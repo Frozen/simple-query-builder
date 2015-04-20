@@ -9,22 +9,6 @@ RE_BIND_PATTERN_COMPILED = re.compile(RE_BIND_PATTERN)
 
 class Query(BaseQuery):
 
-    select = '*'
-    from_ = None
-    where = None
-    join = None
-    on = []
-    group_by = None
-    order_by = None
-    having = None
-    limit = None
-    offset = None
-
-    _bind = None
-
-    def __init__(self):
-        self._bind = dict()
-
     def _compile_where(self, parent, params):
         columns = []
 
