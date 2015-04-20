@@ -1,11 +1,14 @@
 import re
 from six import string_types
-# RE_BIND_PATTERN = ":([a-zA-Z0-9]+)"
+from simple_query_builder import stringify_if_date
+
 RE_BIND_PATTERN = "%\(([a-zA-Z0-9_]+)\)s"
 RE_BIND_PATTERN_COMPILED = re.compile(RE_BIND_PATTERN)
 
+
 class Compilable:
     pass
+
 
 class Query(Compilable):
 
@@ -212,7 +215,7 @@ class Where(Compilable):
 
         if len(self.params) == 2:
             key = _fetch_key(self.statement)
-            parent.add_bind(key, self.param)
+            parent.add_bind(key, stringify_if_date(self.param))
         return u"({0})".format(statement)
 
 
@@ -342,4 +345,5 @@ def _fetch_key(statement):
         return RE_BIND_PATTERN_COMPILED.search(statement).group(1)
     except AttributeError as e:
         raise ValueError("statement does not contains bind name")
+
 

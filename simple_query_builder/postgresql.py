@@ -1,6 +1,8 @@
 import re
 from six import string_types
 # RE_BIND_PATTERN = ":([a-zA-Z0-9]+)"
+from simple_query_builder import stringify_if_date
+
 RE_BIND_PATTERN = ":([a-zA-Z0-9_]+)"
 RE_BIND_PATTERN_COMPILED = re.compile(RE_BIND_PATTERN)
 
@@ -212,7 +214,7 @@ class Where(Compilable):
 
         if len(self.params) == 2:
             key = _fetch_key(self.statement)
-            parent.add_bind(key, self.param)
+            parent.add_bind(key, stringify_if_date(self.param))
         return u"({0})".format(statement)
 
 
@@ -270,7 +272,7 @@ class WhereIn(Compilable):
         key = _fetch_key(statement)
         statement = RE_BIND_PATTERN_COMPILED.sub("{0}", statement)
         if is_collection(values):
-            statement = statement.format(', '.join(map(lambda x: "%({0}_{1})s".format(key, x), range(len(values)))))
+            statement = statement.format(', '.join(map(lambda x: ":{0}_{1}".format(key, x), range(len(values)))))
             for x in range(len(values)):
                 parent.add_bind("{0}_{1}".format(key, x), values[x])
             # for (k, value) in enumerate(self.values, start=1):

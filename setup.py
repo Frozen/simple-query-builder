@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='simple-query-builder',
-    version='0.0.1',
+    version='0.0.2',
     description='Query builder',
     # long_description=open("README.rst").read(),
     author='Potapov Konstantin',
