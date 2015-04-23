@@ -77,13 +77,10 @@ class TestMysqlQuery(unittest.TestCase):
                            WhereIn("post.id IN (:values)", [3, 5, 7]))]
         self.assertEqual({
             'id1': 1,
-            'id2': 2,
-            'values_0': 3,
-            'values_1': 5,
-            'values_2': 7
+            'id2': 2
         }, q.bind())
         self.assertEqual("WHERE (user.id = :id1) AND ((post.id = 1) OR (post.id = :id2) OR (post.id = 3) OR "
-                         "(post.id IN (:values_0, :values_1, :values_2)))", q.compile())
+                         "(post.id IN (3, 5, 7)))", q.compile())
 
         # test where with date and datetime
         from datetime import datetime, date
@@ -151,6 +148,39 @@ class TestMysqlQuery(unittest.TestCase):
         q.limit = 10
         q.offset = 20
         self.assertEqual("LIMIT 10 OFFSET 20", q.compile())
+
+    def test_clone(self):
+
+        q = self.LocalQuery()
+
+        q.select = '1'
+        q.from_ = '2'
+        q.join = '3'
+        q.where = '4'
+        q.group_by = '5'
+        q.having = '6'
+        q.order_by = '7'
+        q.limit = '8'
+
+        q2 = q.clone()
+
+        q2.select = '10'
+        q2.from_ = '20'
+        q2.join = '30'
+        q2.where = '40'
+        q2.group_by = '50'
+        q2.having = '60'
+        q2.order_by = '70'
+        q2.limit = '80'
+
+        self.assertEqual('1', q.select)
+        self.assertEqual('2', q.from_)
+        self.assertEqual('3', q.join)
+        self.assertEqual('4', q.where)
+        self.assertEqual('5', q.group_by)
+        self.assertEqual('6', q.having)
+        self.assertEqual('7', q.order_by)
+        self.assertEqual('8', q.limit)
 
 
 @unittest.skip("incorrect test")

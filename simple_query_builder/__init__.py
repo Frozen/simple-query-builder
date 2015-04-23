@@ -161,4 +161,9 @@ class BaseQuery(Compilable):
         else:
             self._where = [self._where, val]
 
+    def clone(self):
+        import copy
+        return copy.deepcopy(self)
+
+
 
