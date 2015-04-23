@@ -12,7 +12,7 @@ def stringify_if_date(value):
     return value
 
 
-class Compilable:
+class Compilable(object):
     pass
 
 
@@ -21,12 +21,12 @@ class BaseQuery(Compilable):
 
 
     _bind = None
-    offset = None
-    limit = None
-    having = None
-    order_by = None
-    group_by = None
-    join = None
+    _offset = None
+    _limit = None
+    _having = None
+    _order_by = None
+    _group_by = None
+    _join = None
     _where = None
     _from = None
     _select = '*'
@@ -39,7 +39,70 @@ class BaseQuery(Compilable):
         return self._bind
 
     def add_bind(self, key, value):
+        # self._bind = self._bind or {}
         self._bind[key] = value
+
+    def select(self, s):
+        new = self.clone()
+        new._select = s
+        return new
+
+    # def where(self, *params):
+    #     new = self.clone()
+    #     new.add_where(Where(*params))
+    #     return new
+
+    def from_(self, s):
+        new = self.clone()
+        new._from = s
+        return new
+
+    def join(self, s):
+        new = self.clone()
+        new._join = s
+        return new
+
+    def group_by(self, s):
+        new = self.clone()
+        new._add_group_by(s)
+        return new
+
+    def having(self, s):
+        new = self.clone()
+        new._add_having(s)
+        return new
+
+    def _add_group_by(self, s):
+        self._add_param(self, '_group_by', s)
+
+    def _add_having(self, s):
+        self._add_param(self, '_having', s)
+
+    def order_by(self, s):
+        new = self.clone()
+        new._add_order_by(s)
+        return new
+
+    def _add_order_by(self, s):
+        self._add_param(self, '_order_by', s)
+
+    def limit(self, limit):
+        new = self.clone()
+        new._limit = limit
+        return new
+
+    def offset(self, offset):
+        new = self.clone()
+        new._offset = offset
+        return new
+
+    def _add_param(self, object, param, s):
+        if getattr(object, param) is None:
+            setattr(object, param, s)
+        elif self.is_collection(getattr(object, param)):
+            setattr(object, param, list(getattr(object, param)) + [s])
+        else:
+            setattr(object, param, [self._group_by, s])
 
 
     def _compile_select(self, parent, select):

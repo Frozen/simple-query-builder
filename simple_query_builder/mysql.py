@@ -31,6 +31,11 @@ class Query(BaseQuery):
         if columns:
             return u"WHERE {0}".format(u" AND ".join(columns))
 
+    def where(self, *params):
+        new = self.clone()
+        new.add_where(Where(*params))
+        return new
+
 
     def _compile_limit(self, limit, offset):
         columns = []
@@ -49,12 +54,12 @@ class Query(BaseQuery):
         query = [
             self._compile_select(parent, self._select),
             self._compile_from(self._from),
-            self._compile_join(parent, self.join),
+            self._compile_join(parent, self._join),
             self._compile_where(parent, self._where),
-            self._compile_group_by(self.group_by),
-            self._compile_having(self.having),
-            self._compile_order_by(self.order_by),
-            self._compile_limit(self.limit, self.offset)
+            self._compile_group_by(self._group_by),
+            self._compile_having(self._having),
+            self._compile_order_by(self._order_by),
+            self._compile_limit(self._limit, self._offset)
         ]
 
         return ' '.join(filter(lambda x: x, query))

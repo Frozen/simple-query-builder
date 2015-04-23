@@ -9,6 +9,13 @@ RE_BIND_PATTERN_COMPILED = re.compile(RE_BIND_PATTERN)
 
 class Query(BaseQuery):
 
+    # def __init__(self, quote_function=None):
+    #     super(Query, self).__init__()
+
+        # if quote_function is None:
+        #     import psycopg2.extensions.adapt
+        #     self.params['quote_function'] =
+
     def _compile_where(self, parent, params):
         columns = []
 
@@ -46,16 +53,30 @@ class Query(BaseQuery):
         query = [
             self._compile_select(parent, self._select),
             self._compile_from(self._from),
-            self._compile_join(parent, self.join),
+            self._compile_join(parent, self._join),
             self._compile_where(parent, self._where),
-            self._compile_group_by(self.group_by),
-            self._compile_having(self.having),
-            self._compile_order_by(self.order_by),
-            self._compile_limit(self.limit, self.offset)
+            self._compile_group_by(self._group_by),
+            self._compile_having(self._having),
+            self._compile_order_by(self._order_by),
+            self._compile_limit(self._limit, self._offset)
         ]
 
         return ' '.join(filter(lambda x: x, query))
 
+    def where(self, *params):
+        new = self.clone()
+        new.add_where(Where(*params))
+        return new
+
+    def whereOr(self, *params):
+        new = self.clone()
+        new.add_where(WhereOr(*params))
+        return new
+
+    def whereIn(self, statement, values):
+        new = self.clone()
+        new.add_where(WhereIn(statement, values))
+        return new
 
 class Where(Compilable):
 

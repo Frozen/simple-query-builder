@@ -7,72 +7,69 @@ from simple_query_builder.mysql import Query, LeftJoin, RightJoin, InnerJoin, Cr
 
 class TestMysqlQuery(unittest.TestCase):
 
-    class LocalQuery(Query):
+    class Q(Query):
         _select = None
-
-
 
     def test_select(self):
 
-        q = Query()
-        q._select = 1
+        q = Query().select(1)
         self.assertEqual("SELECT 1", q.compile())
-        q._select = 0
+        q = Query().select(0)
         self.assertEqual("SELECT 0", q.compile())
-        q._select = "bla"
+        q = Query().select("bla")
         self.assertEqual("SELECT bla", q.compile())
         self.assertEqual(u"SELECT bla", q.compile())
-        q._select = u"я"
+        q = Query().select(u"я")
         self.assertEqual(u"SELECT я", q.compile())
-        q._select = [1, Query()]
+        q = Query().select([1, Query()])
         self.assertEqual(u"SELECT 1, (SELECT *)", q.compile())
 
     def test_from(self):
-        q = Query()
 
-        q._from = "table"
+        q = Query().from_("table")
         self.assertEqual("SELECT * FROM table", q.compile())
-        q._from = ["table1", "table2"]
+        q = Query().from_(["table1", "table2"])
         self.assertEqual("SELECT * FROM table1, table2", q.compile())
 
     def test_join(self):
 
-        q = self.LocalQuery()
+        q = self.Q()
         s = "table ON user.id=posts.user_id"
-        q.join = "table ON user.id=posts.user_id"
+        q = q.join("table ON user.id=posts.user_id")
         self.assertEqual("JOIN " + s, q.compile())
-        q.join = LeftJoin("table", "user.id=posts.user_id")
+
+        q = LeftJoin("table", "user.id=posts.user_id")
         self.assertEqual("LEFT JOIN " + s, q.compile())
-        q.join = RightJoin("table", "user.id=posts.user_id")
+        q = RightJoin("table", "user.id=posts.user_id")
         self.assertEqual("RIGHT JOIN " + s, q.compile())
-        q.join = InnerJoin("table", "user.id=posts.user_id")
+        q = InnerJoin("table", "user.id=posts.user_id")
         self.assertEqual("INNER JOIN " + s, q.compile())
-        q.join = CrossJoin("table", "user.id=posts.user_id")
+        q = CrossJoin("table", "user.id=posts.user_id")
         self.assertEqual("CROSS JOIN " + s, q.compile())
 
-        q = self.LocalQuery()
-        q.join = [LeftJoin("user", "user.id=posts.user_id"), RightJoin("user", "user.id=posts.user_id")]
+        q = self.Q()
+        q = q.join([LeftJoin("user", "user.id=posts.user_id"), RightJoin("user", "user.id=posts.user_id")])
         self.assertEqual("LEFT JOIN user ON user.id=posts.user_id, RIGHT JOIN user ON user.id=posts.user_id", q.compile())
 
-        q = self.LocalQuery()
-        q2 = self.LocalQuery()
-        q2._select = 1
-        q.join = LeftJoin(Subquery(q2, "foo"), "foo.id=posts.user_id")
+        q = self.Q()
+        q2 = self.Q().select(1)
+        # q2._select = 1
+        q = q.join(LeftJoin(Subquery(q2, "foo"), "foo.id=posts.user_id"))
         self.assertEqual("LEFT JOIN (SELECT 1) AS foo ON foo.id=posts.user_id", q.compile())
-
+    #
     def test_where(self):
 
-        q = self.LocalQuery()
-        q._where = "user.id > 1"
-        self.assertEqual("WHERE (user.id > 1)", q.compile())
+        # q = self.Q()
+        # q = q.where("user.id > 1")
+        # self.assertEqual("WHERE (user.id > 1)", q.compile())
 
-        q = self.LocalQuery()
-        q._where = Where("user.id > %(id)s", 1)
-        self.assertEqual("WHERE (user.id > %(id)s)", q.compile())
-        self.assertEqual({"id": 1}, q.bind())
+        # q = self.Q()
+        # q = q.where("user.id > %(id)s", 1)
+        # self.assertEqual("WHERE (user.id > %(id)s)", q.compile())
+        # self.assertEqual({"id": 1}, q.bind())
 
-        q = self.LocalQuery()
-        q._where = [Where("user.id = %(id1)s", 1), WhereOr(Where("post.id = 1"), Where("post.id = %(id2)s", 2), "post.id = 3", WhereIn("post.id IN (%(values)s)", [3, 5, 7]))]
+        q = self.Q()
+        q = q.where([Where("user.id = %(id1)s", 1), WhereOr(Where("post.id = 1"), Where("post.id = %(id2)s", 2), "post.id = 3", WhereIn("post.id IN (%(values)s)", [3, 5, 7]))])
         self.assertEqual({
             'id1': 1,
             'id2': 2,
@@ -86,76 +83,76 @@ class TestMysqlQuery(unittest.TestCase):
         # test where with date and datetime
         from datetime import datetime, date
 
-        q = self.LocalQuery()
-        q._where = Where("dt > %(dt)s", date(2015, 5, 7))
-        self.assertEqual({"dt": "2015-05-07"}, q.bind())
+        # q = self.Q()
+        # q = q.where("dt > %(dt)s", date(2015, 5, 7))
+        # self.assertEqual({"dt": "2015-05-07"}, q.bind())
 
-        q = self.LocalQuery()
-        q._where = Where("dt > %(dt)s", datetime(2014, 10, 01, 23, 11, 1))
-        self.assertEqual({"dt": "2014-10-01 23:11:01"}, q.bind())
+        # q = self.Q()
+        # q._where = Where("dt > %(dt)s", datetime(2014, 10, 01, 23, 11, 1))
+        # self.assertEqual({"dt": "2014-10-01 23:11:01"}, q.bind())
 
     def test_where_in(self):
 
-        q = self.LocalQuery()
+        q = self.Q()
         q._where = WhereIn("user.id IN (%(ids)s)", [1, 3])
         self.assertEqual("WHERE (user.id IN (%(ids_0)s, %(ids_1)s))", q.compile())
 
         # test empty
-        q = self.LocalQuery()
+        q = self.Q()
         q._where = WhereIn("user.id", [])
         self.assertEqual("", q.compile())
 
-        q = self.LocalQuery()
+        q = self.Q()
         q._where = WhereIn("user.id IN (%(in)s)", Query())
         self.assertEqual("WHERE (user.id IN (SELECT *))", q.compile())
 
     def test_group_by(self):
 
-        q = self.LocalQuery()
-        q.group_by = "user.id"
+        q = self.Q()
+        q._group_by = "user.id"
         self.assertEqual("GROUP BY user.id", q.compile())
 
-        q = self.LocalQuery()
-        q.group_by = ["user.id", "date"]
+        q = self.Q()
+        q._group_by = ["user.id", "date"]
         self.assertEqual("GROUP BY user.id, date", q.compile())
 
     def test_having(self):
 
-        q = self.LocalQuery()
-        q.having = "count(user.id) > 0"
+        q = self.Q()
+        q._having = "count(user.id) > 0"
         self.assertEqual("HAVING count(user.id) > 0", q.compile())
 
-        q = self.LocalQuery()
-        q.having = ["count(user.id) > 0", "date != now()"]
+        q = self.Q()
+        q._having = ["count(user.id) > 0", "date != now()"]
         self.assertEqual("HAVING count(user.id) > 0 AND date != now()", q.compile())
 
     def test_order_by(self):
 
-        q = self.LocalQuery()
-        q.order_by = "user.id"
+        q = self.Q()
+        q._order_by = "user.id"
         self.assertEqual("ORDER BY user.id", q.compile())
 
-        q = self.LocalQuery()
-        q.order_by = ["user.id", "date desc"]
+        q = self.Q()
+        q._order_by = ["user.id", "date desc"]
         self.assertEqual("ORDER BY user.id, date desc", q.compile())
 
     def test_limit(self):
-        q = self.LocalQuery()
-        q.limit = "10"
+        q = self.Q()
+        q._limit = "10"
         self.assertEqual("LIMIT 10", q.compile())
 
-        q = self.LocalQuery()
-        q.limit = 10
-        q.offset = 20
+        q = self.Q()
+        q._limit = 10
+        q._offset = 20
         self.assertEqual("LIMIT 20, 10", q.compile())
 
     def test_add_where(self):
 
-        q = self.LocalQuery()
+        q = self.Q()
         q.add_where(Where("id>1"))
         self.assertEqual("WHERE (id>1)", q.compile())
 
-        q = self.LocalQuery()
+        q = self.Q()
         q._where = Where("id > 1")
         q.add_where(Where("id > 2"))
         self.assertEqual("WHERE (id > 1) AND (id > 2)", q.compile())
@@ -184,7 +181,7 @@ class TestMysqlHard(unittest.TestCase):
 
         q3._select = ['id', q1]
         q3._from = 'clip c1'
-        q3.join = Join(Subquery(q2, 'c2'), 'c1.id = c2.id')
+        q3._join = Join(Subquery(q2, 'c2'), 'c1.id = c2.id')
         q3._where = WhereIn('c1.id IN (%(c1_id)s)', [1])
 
         self.assertEqual(query, q3.compile())
