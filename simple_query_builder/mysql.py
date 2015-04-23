@@ -47,10 +47,10 @@ class Query(BaseQuery):
         if parent is None:
             parent = self
         query = [
-            self._compile_select(parent, self.select),
-            self._compile_from(self.from_),
+            self._compile_select(parent, self._select),
+            self._compile_from(self._from),
             self._compile_join(parent, self.join),
-            self._compile_where(parent, self.where),
+            self._compile_where(parent, self._where),
             self._compile_group_by(self.group_by),
             self._compile_having(self.having),
             self._compile_order_by(self.order_by),

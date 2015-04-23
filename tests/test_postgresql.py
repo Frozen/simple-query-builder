@@ -7,31 +7,31 @@ from simple_query_builder.postgresql import Query, LeftJoin, RightJoin, InnerJoi
 class TestMysqlQuery(unittest.TestCase):
 
     class LocalQuery(Query):
-        select = None
+        _select = None
 
 
 
     def test_select(self):
 
         q = Query()
-        q.select = 1
+        q._select = 1
         self.assertEqual("SELECT 1", q.compile())
-        q.select = 0
+        q._select = 0
         self.assertEqual("SELECT 0", q.compile())
-        q.select = "bla"
+        q._select = "bla"
         self.assertEqual("SELECT bla", q.compile())
         self.assertEqual(u"SELECT bla", q.compile())
-        q.select = u"я"
+        q._select = u"я"
         self.assertEqual(u"SELECT я", q.compile())
-        q.select = [1, Query()]
+        q._select = [1, Query()]
         self.assertEqual(u"SELECT 1, (SELECT *)", q.compile())
 
     def test_from(self):
         q = Query()
 
-        q.from_ = "table"
+        q._from = "table"
         self.assertEqual("SELECT * FROM table", q.compile())
-        q.from_ = ["table1", "table2"]
+        q._from = ["table1", "table2"]
         self.assertEqual("SELECT * FROM table1, table2", q.compile())
 
     def test_join(self):
@@ -55,23 +55,23 @@ class TestMysqlQuery(unittest.TestCase):
 
         q = self.LocalQuery()
         q2 = self.LocalQuery()
-        q2.select = 1
+        q2._select = 1
         q.join = LeftJoin(Subquery(q2, "foo"), "foo.id=posts.user_id")
         self.assertEqual("LEFT JOIN (SELECT 1) AS foo ON foo.id=posts.user_id", q.compile())
 
     def test_where(self):
 
         q = self.LocalQuery()
-        q.where = "user.id > 1"
+        q._where = "user.id > 1"
         self.assertEqual("WHERE (user.id > 1)", q.compile())
 
         q = self.LocalQuery()
-        q.where = Where("user.id > :id", 1)
+        q._where = Where("user.id > :id", 1)
         self.assertEqual("WHERE (user.id > :id)", q.compile())
         self.assertEqual({"id": 1}, q.bind())
 
         q = self.LocalQuery()
-        q.where = [Where("user.id = :id1", 1),
+        q._where = [Where("user.id = :id1", 1),
                    WhereOr(Where("post.id = 1"),
                            Where("post.id = :id2", 2), "post.id = 3",
                            WhereIn("post.id IN (:values)", [3, 5, 7]))]
@@ -89,27 +89,27 @@ class TestMysqlQuery(unittest.TestCase):
         from datetime import datetime, date
 
         q = self.LocalQuery()
-        q.where = Where("dt > :dt", date(2015, 5, 7))
+        q._where = Where("dt > :dt", date(2015, 5, 7))
         self.assertEqual({"dt": "2015-05-07"}, q.bind())
 
         q = self.LocalQuery()
-        q.where = Where("dt > :dt", datetime(2014, 10, 01, 23, 11, 1))
+        q._where = Where("dt > :dt", datetime(2014, 10, 01, 23, 11, 1))
         self.assertEqual({"dt": "2014-10-01 23:11:01"}, q.bind())
 
     @unittest.skip("incorrect test")
     def test_where_in(self):
 
         q = self.LocalQuery()
-        q.where = WhereIn("user.id IN (%(ids)s)", [1, 3])
+        q._where = WhereIn("user.id IN (%(ids)s)", [1, 3])
         self.assertEqual("WHERE (user.id IN (%(ids_0)s, %(ids_1)s))", q.compile())
 
         # test empty
         q = self.LocalQuery()
-        q.where = WhereIn("user.id", [])
+        q._where = WhereIn("user.id", [])
         self.assertEqual("", q.compile())
 
         q = self.LocalQuery()
-        q.where = WhereIn("user.id IN (%(in)s)", Query())
+        q._where = WhereIn("user.id IN (%(in)s)", Query())
         self.assertEqual("WHERE (user.id IN (SELECT *))", q.compile())
 
     def test_group_by(self):
@@ -167,18 +167,18 @@ class TestHard(unittest.TestCase):
         q2 = Query()
         q3 = Query()
 
-        q1.select = ['name']
-        q1.where = Where("id = c2.id")
-        q1.from_ = "clip"
+        q1._select = ['name']
+        q1._where = Where("id = c2.id")
+        q1._from = "clip"
 
-        q2.select = 'id'
-        q2.from_ = 'clip'
-        q2.where = Where('id < 30')
+        q2._select = 'id'
+        q2._from = 'clip'
+        q2._where = Where('id < 30')
 
-        q3.select = ['id', q1]
-        q3.from_ = 'clip c1'
+        q3._select = ['id', q1]
+        q3._from = 'clip c1'
         q3.join = Join(Subquery(q2, 'c2'), 'c1.id = c2.id')
-        q3.where = WhereIn('c1.id IN (%(c1_id)s)', [1])
+        q3._where = WhereIn('c1.id IN (%(c1_id)s)', [1])
 
         self.assertEqual(query, q3.compile())
 

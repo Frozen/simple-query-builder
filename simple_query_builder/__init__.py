@@ -27,8 +27,9 @@ class BaseQuery(Compilable):
     order_by = None
     group_by = None
     join = None
-    where = None
-    from_ = None
+    _where = None
+    _from = None
+    _select = '*'
 
     def __init__(self):
         self._bind = dict()
@@ -40,7 +41,6 @@ class BaseQuery(Compilable):
     def add_bind(self, key, value):
         self._bind[key] = value
 
-    select = '*'
 
     def _compile_select(self, parent, select):
         query = None
@@ -152,13 +152,13 @@ class BaseQuery(Compilable):
             return False
 
     def add_where(self, val):
-        if self.where is None:
-            self.where = [val]
-        elif self.is_collection(self.where):
-            where = list(self.where)
+        if self._where is None:
+            self._where = [val]
+        elif self.is_collection(self._where):
+            where = list(self._where)
             where.append(val)
-            self.where = where
+            self._where = where
         else:
-            self.where = [self.where, val]
+            self._where = [self._where, val]
 
 
